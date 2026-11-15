@@ -158,6 +158,32 @@ export interface RadarData {
   overall_ratio: number;
   rows: RadarRow[];
   live: LiveRow[];
+  categories: CategorySummary[];
+  leaders: GrowthLeader[];
+}
+
+/** One category's place in the radar: how much pre-token value it holds and what the market pays for it. */
+export interface CategorySummary {
+  category: string;
+  pre_token_count: number;
+  total_tvl_usd: number;
+  total_implied_usd: number;
+  comp_ratio: number;
+  comp_n: number;
+  top_slug: string;
+  top_name: string;
+  top_implied_usd: number;
+}
+
+/** A fastest-growing rankable protocol: growth is a signal, never the whole score. */
+export interface GrowthLeader {
+  rank: number;
+  slug: string;
+  name: string;
+  category: string | null;
+  tvl_usd: number;
+  change_7d: number;
+  implied_value_usd: number;
 }
 
 /** Why the snapshot is not one this model can score. */
@@ -543,6 +569,57 @@ export function liveRows(snapshot: Snapshot): LiveRow[] {
     }));
 }
 
+/** One summary per category of rankable pre-token protocols, richest first by total implied value.
+ *  A category's comp ratio is the same median the rows use; a category with no live comps of its
+ *  own falls back to the overall median, so its ratio is the market's, not a guess. */
+export function categorySummaries(board: BoardRow[], comps: { byCategory: Map<string, { n: number; ratio: number }>; overall: number }): CategorySummary[] {
+  const byCategory = new Map<string, BoardRow[]>();
+  for (const row of board) {
+    const key = row.category ?? 'Other';
+    const list = byCategory.get(key);
+    if (list) list.push(row);
+    else byCategory.set(key, [row]);
+  }
+  const summaries: CategorySummary[] = [];
+  for (const [category, rows] of byCategory) {
+    const sorted = [...rows].sort((a, b) => b.implied_value_usd - a.implied_value_usd);
+    const top = sorted[0]!;
+    const entry = comps.byCategory.get(category);
+    summaries.push({
+      category,
+      pre_token_count: rows.length,
+      total_tvl_usd: rows.reduce((sum, r) => sum + r.tvl_usd, 0),
+      total_implied_usd: rows.reduce((sum, r) => sum + r.implied_value_usd, 0),
+      comp_ratio: round4(entry ? entry.ratio : comps.overall),
+      comp_n: entry ? entry.n : 0,
+      top_slug: top.slug,
+      top_name: top.name,
+      top_implied_usd: top.implied_value_usd,
+    });
+  }
+  summaries.sort((a, b) => b.total_implied_usd - a.total_implied_usd || a.category.localeCompare(b.category));
+  return summaries;
+}
+
+/** The fastest-growing rankable protocols over seven days, at least $10M of TVL so a small pool's
+ *  one-week jump does not lead the list. Growth is shown beside the rank, never instead of it:
+ *  a leader can be a fast riser with a modest implied value, and the board still ranks by value. */
+export function growthLeaders(board: BoardRow[]): GrowthLeader[] {
+  return board
+    .filter((r) => r.change_7d !== null && r.tvl_usd >= 10_000_000)
+    .sort((a, b) => (b.change_7d ?? 0) - (a.change_7d ?? 0) || b.tvl_usd - a.tvl_usd)
+    .slice(0, 5)
+    .map((r) => ({
+      rank: r.rank,
+      slug: r.slug,
+      name: r.name,
+      category: r.category,
+      tvl_usd: r.tvl_usd,
+      change_7d: r.change_7d ?? 0,
+      implied_value_usd: r.implied_value_usd,
+    }));
+}
+
 /** A board row's compact form for data.js, with the farm plan generated in the page. */
 export function radarRow(row: BoardRow): RadarRow {
   return {
@@ -570,6 +647,8 @@ export function buildRadar(snapshot: Snapshot, model: ModelConstants = MODEL): {
   const live = liveRows(snapshot);
   const comps = buildComps(snapshot, model);
   const early = board.filter((r) => !snapshot.watchlist.includes(r.slug)).length;
+  const categories = categorySummaries(board, comps);
+  const leaders = growthLeaders(board);
   const compList = [...comps.byCategory.entries()]
     .map(([category, v]) => ({ category, n: v.n, ratio: round4(v.ratio) }))
     .sort((a, b) => b.n - a.n || (a.category < b.category ? -1 : 1));
@@ -587,6 +666,8 @@ export function buildRadar(snapshot: Snapshot, model: ModelConstants = MODEL): {
     overall_ratio: round4(comps.overall),
     rows: board.map(radarRow),
     live,
+    categories,
+    leaders,
   };
   return { board, radar };
 }
