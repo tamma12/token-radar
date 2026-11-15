@@ -397,6 +397,48 @@
     );
   }
 
+  function categoryTable() {
+    var cats = DATA.categories || [];
+    if (!cats.length) return el('div', null);
+    var body = cats.map(function (c) {
+      return el('tr', null,
+        el('td', { text: c.category }),
+        el('td', { class: 'num', text: String(c.pre_token_count) }),
+        el('td', { class: 'num', text: fmtUsd(c.total_tvl_usd) }),
+        el('td', { class: 'num', text: fmtUsd(c.total_implied_usd) }),
+        el('td', { class: 'num', text: c.comp_ratio.toFixed(2) + 'x' + (c.comp_n ? ' (n=' + c.comp_n + ')' : ' (overall)') }),
+        el('td', null, el('a', { href: '#p=' + c.top_slug, text: c.top_name, onclick: function (ev) { ev.preventDefault(); openDetail(c.top_slug); } }))
+      );
+    });
+    return el('section', { class: 'panel categories' },
+      el('h2', { text: 'Where the value sits, by category' }),
+      el('p', { class: 'sub', text: 'Each category\u2019s pre-token protocols together: how many, their TVL, their combined implied value, the comp ratio the market gives that category, and the category\u2019s top protocol. The ratio is the same median the rows are scored with, so the table and the board cannot disagree.' }),
+      el('table', null,
+        el('thead', null, el('tr', null, el('th', { scope: 'col', text: 'Category' }), el('th', { scope: 'col', text: 'Pre-token' }), el('th', { scope: 'col', text: 'TVL' }), el('th', { scope: 'col', text: 'Implied value' }), el('th', { scope: 'col', text: 'Comp ratio' }), el('th', { scope: 'col', text: 'Top protocol' }))),
+        el('tbody', null, body)
+      )
+    );
+  }
+
+  function leadersPanel() {
+    var leaders = DATA.leaders || [];
+    if (!leaders.length) return el('div', null);
+    var items = leaders.map(function (g) {
+      return el('li', null,
+        el('button', { type: 'button', onclick: function () { openDetail(g.slug); } },
+          el('b', { text: g.name }),
+          el('span', { class: 'sub', text: ' rank ' + g.rank + ' · ' + (g.category || 'Other') + ' · TVL ' + fmtUsd(g.tvl_usd) + ' · implied ' + fmtUsd(g.implied_value_usd) }),
+          el('span', { class: 'gain', text: fmtPct(g.change_7d) })
+        )
+      );
+    });
+    return el('section', { class: 'panel leaders' },
+      el('h2', { text: 'Fastest growing this week' }),
+      el('p', { class: 'sub', text: 'The five rankable protocols with the largest seven-day TVL gain, each at least $10M of TVL. Growth is a signal beside the rank: a fast riser can still carry a modest implied value, and the board keeps ranking by value.' }),
+      el('ol', { class: 'leaders-list' }, items)
+    );
+  }
+
   var dialog = el('dialog', { class: 'detail', id: 'detail', 'aria-labelledby': 'detail-title' });
   dialog.addEventListener('close', function () { state.selected = null; writeHash(); });
 
@@ -452,7 +494,11 @@
     shell.appendChild(lede());
     shell.appendChild(controls());
     shell.appendChild(state.tab === 'pre-token' ? boardTable() : liveTable());
-    if (state.tab === 'pre-token') shell.appendChild(modelPanel());
+    if (state.tab === 'pre-token') {
+      shell.appendChild(modelPanel());
+      shell.appendChild(categoryTable());
+      shell.appendChild(leadersPanel());
+    }
     shell.appendChild(el('p', { class: 'foot', text: 'Implied value is this radar\u2019s own claim from the snapshot\u2019s figures: a protocol records no token, never that it has none. Nothing here predicts whether or when a token is issued. Farm steps are actions to take, not financial advice.' }));
     app.appendChild(shell);
     app.setAttribute('aria-busy', 'false');

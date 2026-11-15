@@ -112,6 +112,17 @@ tbody tr[data-selected="true"] { background: rgba(242, 169, 59, 0.1); }
 .button { min-height: 36px; padding: 0 var(--step-4); border: 1px solid var(--border); border-radius: var(--radius-control); background: var(--surface-2); color: var(--ink); }
 .button.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 600; }
 .foot { margin-top: var(--step-5); color: var(--muted); font-size: 12px; max-width: 72ch; }
+.categories { margin-top: var(--step-4); padding: var(--step-5); display: grid; gap: var(--step-3); }
+.categories table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.categories th, .categories td { text-align: left; padding: var(--step-2) var(--step-3); border-bottom: 1px solid var(--border); }
+.categories th { color: var(--muted); font-weight: 500; }
+.categories .num { text-align: right; font-family: var(--font-num); }
+.categories a { color: var(--accent); }
+.leaders { margin-top: var(--step-4); padding: var(--step-5); display: grid; gap: var(--step-3); }
+.leaders-list { margin: 0; padding: 0; list-style: none; display: grid; gap: var(--step-2); }
+.leaders-list button { width: 100%; display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--step-2) var(--step-3); text-align: left; background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-control); padding: var(--step-3) var(--step-4); color: var(--ink); cursor: pointer; }
+.leaders-list button b { font-weight: 600; }
+.leaders-list .gain { margin-left: auto; color: var(--accent); font-family: var(--font-num); font-weight: 600; }
 
 .detail {
   position: fixed; top: 0; right: 0; bottom: 0; width: min(560px, 94vw); z-index: 10;
